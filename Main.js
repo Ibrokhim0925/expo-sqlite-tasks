@@ -18,6 +18,7 @@ export default function Main() {
   const [category, setCategory] = useState('');
   const [note, setNote] = useState('');
   const [filter, setFilter] = useState('All');
+}
 
   // Create table on startup
   useEffect(() => {
@@ -44,18 +45,26 @@ export default function Main() {
   };
 
   // 3. Add Expense (Replaces addTask)
-  const addExpense = async () => {
-    // Basic validation
+  const saveExpense = async () => {
     if (!amount || !category) return;
 
-    const newDate = new Date().toISOString(); // Generate "2025-11-23..."
+    if (editingId) {
+      // 1. UPDATE existing record
+      await db.runAsync(
+        "UPDATE expenses SET amount = ?, category = ?, note = ? WHERE id = ?",
+        [parseFloat(amount), category, note, editingId]
+      );
+      setEditingId(null); // Exit edit mode
+    } else {
+      // 2. INSERT new record
+      const newDate = new Date().toISOString();
+      await db.runAsync(
+        "INSERT INTO expenses (amount, category, note, date) VALUES (?, ?, ?, ?)",
+        [parseFloat(amount), category, note, newDate]
+      );
+    }
 
-    await db.runAsync(
-      "INSERT INTO expenses (amount, category, note, date) VALUES (?, ?, ?, ?)",
-      [parseFloat(amount), category, note, newDate]
-    );
-    
-    // Clear inputs and reload
+    // 3. Reset form and reload
     setAmount("");
     setCategory("");
     setNote("");
@@ -71,22 +80,33 @@ export default function Main() {
     loadTasks();
   };
 
-  const renderItem = ({ item }) => (
-    <View style={styles.taskRow}>
-      <TouchableOpacity
-        style={{ flex: 1 }}
-        onPress={() => toggleTask(item.id, item.done)}
-      >
-        <Text style={[styles.taskText, item.done ? styles.done : null]}>
-          {item.title}
-        </Text>
-      </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => deleteTask(item.id)}>
-        <Text style={styles.delete}>🤮</Text>
-      </TouchableOpacity>
-    </View>
-  );
+const [editingId, setEditingId] = useState(null); // Track which ID is being edited
+
+  const handleEdit = (item) => {
+    setEditingId(item.id);
+    setAmount(item.amount.toString());
+    setCategory(item.category);
+    setNote(item.note);
+  };
+
+
+  const {/* Inside your renderItem, add this row of buttons */}
+        renderItem={({ item }) => (
+          <View style={styles.card}>
+            <View style={styles.cardRow}>
+              <Text style={styles.category}>{item.category}</Text>
+              <Text style={styles.amount}>${item.amount.toFixed(2)}</Text>
+            </View>
+            <Text style={styles.note}>{item.note}</Text>
+            <Text style={styles.date}>{new Date(item.date).toLocaleDateString()}</Text>
+            
+            {/* NEW EDIT BUTTON */}
+            <TouchableOpacity onPress={() => handleEdit(item)}>
+              <Text style={styles.editText}>Edit</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
 
 // Helper: Filter expenses by date
@@ -271,4 +291,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
+  },
+
+  // Add to styles
+  editText: {
+    color: "#3b82f6",
+    marginTop: 8,
+    fontWeight: "bold",
   },
