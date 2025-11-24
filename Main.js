@@ -111,6 +111,23 @@ export default function Main() {
   const visibleExpenses = getFilteredExpenses();
 
 
+// Calculate Totals
+  const calculateTotals = () => {
+    // 1. Sum up all amounts
+    const total = visibleExpenses.reduce((sum, item) => sum + item.amount, 0);
+
+    // 2. Group by Category
+    const byCategory = visibleExpenses.reduce((acc, item) => {
+      acc[item.category] = (acc[item.category] || 0) + item.amount;
+      return acc;
+    }, {});
+
+    return { total, byCategory };
+  };
+
+  const { total, byCategory } = calculateTotals();  
+
+
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.heading}>Student Expense Tracker</Text>
@@ -155,6 +172,19 @@ export default function Main() {
             <Text style={styles.filterText}>{f}</Text>
           </TouchableOpacity>
         ))}
+      </View>
+
+      {/* SUMMARY SECTION */}
+      <View style={styles.summaryContainer}>
+        <Text style={styles.totalText}>Total Spending: ${total.toFixed(2)}</Text>
+        
+        <View style={styles.categoryList}>
+          {Object.keys(byCategory).map((cat) => (
+            <Text key={cat} style={styles.categoryStat}>
+              {cat}: ${byCategory[cat].toFixed(2)}
+            </Text>
+          ))}
+        </View>
       </View>
 
       {/* 3. EXPENSE LIST */}
@@ -213,3 +243,32 @@ const styles = StyleSheet.create({
   note: { color: "#9ca3af", fontSize: 14 },
   date: { color: "#6b7280", fontSize: 12, marginTop: 4, textAlign: 'right' },
 });
+
+// Add inside StyleSheet.create({ ... })
+  summaryContainer: {
+    backgroundColor: "#374151",
+    padding: 16,
+    borderRadius: 8,
+    marginBottom: 16,
+    alignItems: "center",
+  },
+  totalText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 8,
+  },
+  categoryList: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 12,
+  },
+  categoryStat: {
+    color: "#9ca3af",
+    fontSize: 14,
+    backgroundColor: "#1f2937",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
