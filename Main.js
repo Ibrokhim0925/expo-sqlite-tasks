@@ -4,7 +4,6 @@ import {
   View,
   Text,
   TextInput,
-  Button,
   FlatList,
   TouchableOpacity,
   StyleSheet,
@@ -13,14 +12,16 @@ import { useSQLiteContext } from 'expo-sqlite';
 
 export default function Main() {
   const db = useSQLiteContext();
+  
+  // --- STATE ---
   const [expenses, setExpenses] = useState([]);
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
   const [note, setNote] = useState('');
   const [filter, setFilter] = useState('All');
-}
+  const [editingId, setEditingId] = useState(null); // Track which ID is being edited
 
-  // Create table on startup
+  // --- DATABASE SETUP & LOADING ---
   useEffect(() => {
     async function setup() {
       await db.execAsync(`
@@ -38,13 +39,12 @@ export default function Main() {
     setup();
   }, []);
 
-  // 2. Load Expenses (Replaces loadTasks)
   const loadExpenses = async () => {
     const rows = await db.getAllAsync("SELECT * FROM expenses ORDER BY id DESC");
     setExpenses(rows);
   };
 
-  // 3. Add Expense (Replaces addTask)
+  // --- ADD / UPDATE LOGIC ---
   const saveExpense = async () => {
     if (!amount || !category) return;
 
@@ -71,18 +71,6 @@ export default function Main() {
     loadExpenses();
   };
 
-  const deleteTask = async (id) => {
-    await db.runAsync(
-      "DELETE FROM tasks WHERE id = ?;",
-      [id]
-    );
-
-    loadTasks();
-  };
-
-
-const [editingId, setEditingId] = useState(null); // Track which ID is being edited
-
   const handleEdit = (item) => {
     setEditingId(item.id);
     setAmount(item.amount.toString());
@@ -90,26 +78,7 @@ const [editingId, setEditingId] = useState(null); // Track which ID is being edi
     setNote(item.note);
   };
 
-
-  const {/* Inside your renderItem, add this row of buttons */}
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            <View style={styles.cardRow}>
-              <Text style={styles.category}>{item.category}</Text>
-              <Text style={styles.amount}>${item.amount.toFixed(2)}</Text>
-            </View>
-            <Text style={styles.note}>{item.note}</Text>
-            <Text style={styles.date}>{new Date(item.date).toLocaleDateString()}</Text>
-            
-            {/* NEW EDIT BUTTON */}
-            <TouchableOpacity onPress={() => handleEdit(item)}>
-              <Text style={styles.editText}>Edit</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-
-// Helper: Filter expenses by date
+  // --- FILTER & ANALYTICS ---
   const getFilteredExpenses = () => {
     if (filter === 'All') return expenses;
 
@@ -130,13 +99,9 @@ const [editingId, setEditingId] = useState(null); // Track which ID is being edi
 
   const visibleExpenses = getFilteredExpenses();
 
-
-// Calculate Totals
   const calculateTotals = () => {
-    // 1. Sum up all amounts
     const total = visibleExpenses.reduce((sum, item) => sum + item.amount, 0);
 
-    // 2. Group by Category
     const byCategory = visibleExpenses.reduce((acc, item) => {
       acc[item.category] = (acc[item.category] || 0) + item.amount;
       return acc;
@@ -145,9 +110,9 @@ const [editingId, setEditingId] = useState(null); // Track which ID is being edi
     return { total, byCategory };
   };
 
-  const { total, byCategory } = calculateTotals();  
+  const { total, byCategory } = calculateTotals();
 
-
+  // --- RENDER ---
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.heading}>Student Expense Tracker</Text>
@@ -176,8 +141,12 @@ const [editingId, setEditingId] = useState(null); // Track which ID is being edi
           value={note}
           onChangeText={setNote}
         />
-        <TouchableOpacity style={styles.addButton} onPress={addExpense}>
-          <Text style={styles.addButtonText}>Add Expense</Text>
+        
+        {/* Updated Button to use saveExpense */}
+        <TouchableOpacity style={styles.addButton} onPress={saveExpense}>
+          <Text style={styles.addButtonText}>
+            {editingId ? "Update Expense" : "Add Expense"}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -194,7 +163,7 @@ const [editingId, setEditingId] = useState(null); // Track which ID is being edi
         ))}
       </View>
 
-      {/* SUMMARY SECTION */}
+      {/* 3. SUMMARY SECTION */}
       <View style={styles.summaryContainer}>
         <Text style={styles.totalText}>Total Spending: ${total.toFixed(2)}</Text>
         
@@ -207,7 +176,7 @@ const [editingId, setEditingId] = useState(null); // Track which ID is being edi
         </View>
       </View>
 
-      {/* 3. EXPENSE LIST */}
+      {/* 4. EXPENSE LIST */}
       <FlatList
         data={visibleExpenses}
         keyExtractor={(item) => item.id.toString()}
@@ -219,12 +188,19 @@ const [editingId, setEditingId] = useState(null); // Track which ID is being edi
             </View>
             <Text style={styles.note}>{item.note}</Text>
             <Text style={styles.date}>{new Date(item.date).toLocaleDateString()}</Text>
+            
+            {/* EDIT BUTTON */}
+            <TouchableOpacity onPress={() => handleEdit(item)}>
+              <Text style={styles.editText}>Edit</Text>
+            </TouchableOpacity>
           </View>
         )}
       />
     </SafeAreaView>
   );
+}
 
+// --- STYLES (Merged into one object) ---
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: "#111827" },
   heading: { fontSize: 24, fontWeight: "bold", color: "#fff", marginBottom: 16, textAlign: 'center' },
@@ -248,23 +224,7 @@ const styles = StyleSheet.create({
   activeFilter: { backgroundColor: "#10b981" },
   filterText: { color: "#fff", fontSize: 14 },
 
-  // Card Styles
-  card: {
-    backgroundColor: "#1f2937",
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 10,
-    borderLeftWidth: 4,
-    borderLeftColor: "#3b82f6",
-  },
-  cardRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4 },
-  category: { color: "#fff", fontSize: 16, fontWeight: "bold" },
-  amount: { color: "#4ade80", fontSize: 16, fontWeight: "bold" },
-  note: { color: "#9ca3af", fontSize: 14 },
-  date: { color: "#6b7280", fontSize: 12, marginTop: 4, textAlign: 'right' },
-});
-
-// Add inside StyleSheet.create({ ... })
+  // Summary Styles
   summaryContainer: {
     backgroundColor: "#374151",
     padding: 16,
@@ -293,9 +253,23 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
 
-  // Add to styles
+  // Card Styles
+  card: {
+    backgroundColor: "#1f2937",
+    padding: 16,
+    borderRadius: 8,
+    marginBottom: 10,
+    borderLeftWidth: 4,
+    borderLeftColor: "#3b82f6",
+  },
+  cardRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4 },
+  category: { color: "#fff", fontSize: 16, fontWeight: "bold" },
+  amount: { color: "#4ade80", fontSize: 16, fontWeight: "bold" },
+  note: { color: "#9ca3af", fontSize: 14 },
+  date: { color: "#6b7280", fontSize: 12, marginTop: 4, textAlign: 'right' },
   editText: {
     color: "#3b82f6",
     marginTop: 8,
     fontWeight: "bold",
   },
+});
