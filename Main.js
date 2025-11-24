@@ -13,50 +13,53 @@ import { useSQLiteContext } from 'expo-sqlite';
 
 export default function Main() {
   const db = useSQLiteContext();
-  const [tasks, setTasks] = useState([]);
-  const [input, setInput] = useState('');
+  const [expenses, setExpenses] = useState([]);
+  const [amount, setAmount] = useState('');
+  const [category, setCategory] = useState('');
+  const [note, setNote] = useState('');
+  const [filter, setFilter] = useState('All');
 
   // Create table on startup
   useEffect(() => {
     async function setup() {
       await db.execAsync(`
-        CREATE TABLE IF NOT EXISTS tasks (
+        PRAGMA journal_mode = WAL;
+        CREATE TABLE IF NOT EXISTS expenses (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
-          title TEXT NOT NULL,
-          done INTEGER NOT NULL DEFAULT 0
+          amount REAL,
+          category TEXT,
+          note TEXT,
+          date TEXT NOT NULL
         );
       `);
-
-      loadTasks();
+      loadExpenses(); // Fetch data after table is created
     }
-
     setup();
   }, []);
 
-  const loadTasks = async () => {
-    const rows = await db.getAllAsync("SELECT * FROM tasks ORDER BY id DESC;");
-    setTasks(rows);
+  // 2. Load Expenses (Replaces loadTasks)
+  const loadExpenses = async () => {
+    const rows = await db.getAllAsync("SELECT * FROM expenses ORDER BY id DESC");
+    setExpenses(rows);
   };
 
-  const addTask = async () => {
-    if (!input.trim()) return;
+  // 3. Add Expense (Replaces addTask)
+  const addExpense = async () => {
+    // Basic validation
+    if (!amount || !category) return;
+
+    const newDate = new Date().toISOString(); // Generate "2025-11-23..."
 
     await db.runAsync(
-      "INSERT INTO tasks (title, done) VALUES (?, 0);",
-      [input.trim()]
+      "INSERT INTO expenses (amount, category, note, date) VALUES (?, ?, ?, ?)",
+      [parseFloat(amount), category, note, newDate]
     );
-
-    setInput('');
-    loadTasks();
-  };
-
-  const toggleTask = async (id, done) => {
-    await db.runAsync(
-      "UPDATE tasks SET done = ? WHERE id = ?;",
-      [done ? 0 : 1, id]
-    );
-
-    loadTasks();
+    
+    // Clear inputs and reload
+    setAmount("");
+    setCategory("");
+    setNote("");
+    loadExpenses();
   };
 
   const deleteTask = async (id) => {
