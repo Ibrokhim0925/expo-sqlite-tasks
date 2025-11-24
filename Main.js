@@ -88,57 +88,128 @@ export default function Main() {
     </View>
   );
 
+
+// Helper: Filter expenses by date
+  const getFilteredExpenses = () => {
+    if (filter === 'All') return expenses;
+
+    const now = new Date();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay()); // Sunday
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    return expenses.filter((ex) => {
+      const exDate = new Date(ex.date);
+      if (filter === 'Week') return exDate >= startOfWeek;
+      if (filter === 'Month') return exDate >= startOfMonth;
+      return true;
+    });
+  };
+
+  const visibleExpenses = getFilteredExpenses();
+
+
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.heading}>Expo + SQLite Task List</Text>
+      <Text style={styles.heading}>Student Expense Tracker</Text>
 
-      <View style={styles.row}>
+      {/* 1. INPUT FORM */}
+      <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
-          placeholder="New task..."
+          placeholder="Amount ($)"
           placeholderTextColor="#9ca3af"
-          value={input}
-          onChangeText={setInput}
+          keyboardType="numeric"
+          value={amount}
+          onChangeText={setAmount}
         />
-        <Button title="Add" onPress={addTask} />
+        <TextInput
+          style={styles.input}
+          placeholder="Category (Food, Rent...)"
+          placeholderTextColor="#9ca3af"
+          value={category}
+          onChangeText={setCategory}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Note (optional)"
+          placeholderTextColor="#9ca3af"
+          value={note}
+          onChangeText={setNote}
+        />
+        <TouchableOpacity style={styles.addButton} onPress={addExpense}>
+          <Text style={styles.addButtonText}>Add Expense</Text>
+        </TouchableOpacity>
       </View>
 
-      <FlatList
-        data={tasks}
-        keyExtractor={t => t.id.toString()}
-        renderItem={renderItem}
-        ListEmptyComponent={<Text style={styles.empty}>No tasks yet.</Text>}
-      />
+      {/* 2. FILTER BUTTONS */}
+      <View style={styles.filterContainer}>
+        {['All', 'Week', 'Month'].map((f) => (
+          <TouchableOpacity
+            key={f}
+            style={[styles.filterButton, filter === f && styles.activeFilter]}
+            onPress={() => setFilter(f)}
+          >
+            <Text style={styles.filterText}>{f}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
 
-      <Text style={styles.footer}>Tap to toggle • Tap ✕ to delete</Text>
+      {/* 3. EXPENSE LIST */}
+      <FlatList
+        data={visibleExpenses}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={({ item }) => (
+          <View style={styles.card}>
+            <View style={styles.cardRow}>
+              <Text style={styles.category}>{item.category}</Text>
+              <Text style={styles.amount}>${item.amount.toFixed(2)}</Text>
+            </View>
+            <Text style={styles.note}>{item.note}</Text>
+            <Text style={styles.date}>{new Date(item.date).toLocaleDateString()}</Text>
+          </View>
+        )}
+      />
     </SafeAreaView>
   );
-}
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: "#111827" },
-  heading: { fontSize: 24, fontWeight: "700", color: "#fff", marginBottom: 16 },
-  row: { flexDirection: "row", marginBottom: 16, gap: 8 },
+  heading: { fontSize: 24, fontWeight: "bold", color: "#fff", marginBottom: 16, textAlign: 'center' },
+  
+  // Input Styles
+  inputContainer: { gap: 10, marginBottom: 20 },
   input: {
-    flex: 1,
-    padding: 10,
     backgroundColor: "#1f2937",
     color: "#fff",
+    padding: 12,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: "#374151",
   },
-  taskRow: {
-    flexDirection: "row",
-    alignItems: "center",
+  addButton: { backgroundColor: "#3b82f6", padding: 12, borderRadius: 8, alignItems: 'center' },
+  addButtonText: { color: "#fff", fontWeight: "bold" },
+
+  // Filter Styles
+  filterContainer: { flexDirection: "row", gap: 10, marginBottom: 16, justifyContent: "center" },
+  filterButton: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 20, backgroundColor: "#374151" },
+  activeFilter: { backgroundColor: "#10b981" },
+  filterText: { color: "#fff", fontSize: 14 },
+
+  // Card Styles
+  card: {
     backgroundColor: "#1f2937",
-    padding: 12,
+    padding: 16,
     borderRadius: 8,
-    marginBottom: 8,
+    marginBottom: 10,
+    borderLeftWidth: 4,
+    borderLeftColor: "#3b82f6",
   },
-  taskText: { fontSize: 16, color: "#e5e7eb" },
-  done: { color: "#9ca3af", textDecorationLine: "line-through" },
-  delete: { color: "#f87171", fontSize: 18, marginLeft: 12 },
-  empty: { color: "#9ca3af", marginTop: 24, textAlign: "center" },
-  footer: { textAlign: "center", color: "#6b7280", marginTop: 12, fontSize: 12 },
+  cardRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4 },
+  category: { color: "#fff", fontSize: 16, fontWeight: "bold" },
+  amount: { color: "#4ade80", fontSize: 16, fontWeight: "bold" },
+  note: { color: "#9ca3af", fontSize: 14 },
+  date: { color: "#6b7280", fontSize: 12, marginTop: 4, textAlign: 'right' },
 });
